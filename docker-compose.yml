@@ -1,0 +1,59 @@
+version: '3.9'
+
+services:
+  # Backend principal (NestJS)
+  backend:
+    build: ./backend
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgresql://nexus:nexus123@db:5432/nexuscore
+      - REDIS_URL=redis://redis:6379
+      - AI_ENGINE_URL=http://ai-engine:8001
+      - JWT_SECRET=change_this_secret
+    depends_on:
+      - db
+      - redis
+
+  # AI Engine (Python FastAPI)
+  ai-engine:
+    build: ./ai-engine
+    ports:
+      - "8001:8001"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - REDIS_URL=redis://redis:6379
+      - NEXUSCORE_BACKEND_URL=http://backend:3000
+    depends_on:
+      - redis
+
+  # Frontend (Next.js)
+  frontend:
+    build: ./frontend
+    ports:
+      - "3001:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:3000
+    depends_on:
+      - backend
+
+  # Banco de dados
+  db:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_DB=nexuscore
+      - POSTGRES_USER=nexus
+      - POSTGRES_PASSWORD=nexus123
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  # Cache
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+volumes:
+  postgres_data:
